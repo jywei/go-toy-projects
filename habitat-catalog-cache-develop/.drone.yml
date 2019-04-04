@@ -1,0 +1,289 @@
+workspace:
+  base: /go
+  path: src/github.com/honestbee/habitat-catalog-cache
+
+clone:
+  git:
+    image: plugins/git
+    depth: 10
+    tags: true
+
+services:
+  database:
+    image: mdillon/postgis:10-alpine
+    environment:
+      - POSTGRES_USER=catalog_cache
+      - POSTGRES_PASSWORD=catalog_cache
+      - POSTGRES_DB=catalog_cache
+  redis:
+    image: redis:3.2-alpine
+
+pipeline:
+  prepare:
+    image: golang:1.10-alpine
+    commands:
+      - go version
+      - apk add --update --no-cache git gcc g++ curl
+      - go get github.com/golang/dep/cmd/dep
+      - dep ensure
+      - curl -s -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+      - chmod +x ./cc-test-reporter
+
+  test:
+    image: golang:1.10-alpine
+    secrets:
+      - cc_test_reporter_id
+    commands:
+      - apk add --update --no-cache git gcc g++ postgresql-client
+      - go test -v -coverprofile=unit.out ./...
+      - ./cc-test-reporter format-coverage -t gocov unit.out --output coverage/codeclimate.json
+
+  upload-coverage:
+    image: golang:1.10-alpine
+    secrets:
+      - cc_test_reporter_id
+    commands:
+      - ./cc-test-reporter upload-coverage
+    when:
+      event:
+        exclude: [ pull_request ]
+
+  build:
+    image: golang:1.10-alpine
+    commands:
+      - go build -ldflags "-X github.com/honestbee/habitat-catalog-cache/config.Version=${DRONE_BRANCH}-${DRONE_COMMIT_SHA:0:8}" -o bin/catalog ./cmd/catalog
+      - go build -ldflags "-X github.com/honestbee/habitat-catalog-cache/config.Version=${DRONE_BRANCH}-${DRONE_COMMIT_SHA:0:8}" -o bin/sync ./cmd/sync
+    when:
+      branch: [ master, staging ]
+
+  publish-catalog:
+    group: build
+    image: plugins/docker
+    repo: quay.io/honestbee/habitat-catalog-cache
+    registry: ${DOCKER_REGISTRY}
+    secrets:
+      - source: docker_username
+        target: docker_username
+      - source: docker_password
+        target: docker_password
+      - source: docker_registry
+        target: docker_registry
+      - source: ${DRONE_BRANCH}_db_user
+        target: db_user
+      - source: ${DRONE_BRANCH}_db_password
+        target: db_pwd
+      - source: ${DRONE_BRANCH}_db_host
+        target: db_host
+      - source: ${DRONE_BRANCH}_db_name
+        target: db_name
+      - source: ${DRONE_BRANCH}_redis_host
+        target: cache_host
+      - source: ${DRONE_BRANCH}_seeker_base_url
+        target: seeker_base_url      
+    tags:
+      - catalog-${DRONE_BRANCH}-${DRONE_COMMIT_SHA:0:8}
+      - catalog
+    build_args_from_env:
+      - seeker_base_url
+      - cache_host
+      - db_user
+      - db_host
+      - db_name
+      - db_pwd
+    when:
+      branch: [ master, staging ]
+  
+  publish-sync:
+    group: build
+    image: plugins/docker
+    repo: quay.io/honestbee/habitat-catalog-cache
+    registry: ${DOCKER_REGISTRY}
+    dockerfile: Dockerfile.sync
+    secrets:
+      - source: docker_username
+        target: docker_username
+      - source: docker_password
+        target: docker_password
+      - source: docker_registry
+        target: docker_registry
+      - source: ${DRONE_BRANCH}_db_user
+        target: db_user
+      - source: ${DRONE_BRANCH}_db_password
+        target: db_pwd
+      - source: ${DRONE_BRANCH}_db_host
+        target: db_host
+      - source: ${DRONE_BRANCH}_db_name
+        target: db_name
+      - source: ${DRONE_BRANCH}_redis_host
+        target: cache_host
+      - source: ${DRONE_BRANCH}_seeker_base_url
+        target: seeker_base_url      
+    tags:
+      - sync-${DRONE_BRANCH}-${DRONE_COMMIT_SHA:0:8}
+      - sync
+    build_args_from_env:
+      - seeker_base_url
+      - cache_host
+      - db_user
+      - db_host
+      - db_name
+      - db_pwd
+    when:
+      branch: [ master, staging ]
+
+  migrate-staging:
+    group: build
+    image: wys1203/docker-goose
+    secrets:
+      - source: ${DRONE_BRANCH}_db_user
+        target: db_user
+      - source: ${DRONE_BRANCH}_db_password
+        target: db_password
+      - source: ${DRONE_BRANCH}_db_host
+        target: catalog_cache_database_uri
+      - source: ${DRONE_BRANCH}_db_name
+        target: catalog_cache_database_name
+    commands:
+      - goose -env=ci up
+    when:
+      branch: [ staging ]
+
+  helm-deploy-staging-1a:
+    group: deploy
+    image: quay.io/honestbee/drone-helm
+    skip_tls_verify: true
+    reuse_values: true
+    helm_repos: hb-charts=http://helm-charts.honestbee.com
+    chart: hb-charts/habitat-catalog-cache
+    values: env=staging,image.catalog.tag=catalog-${DRONE_BRANCH}-${DRONE_COMMIT_SHA:0:8},image.sync.tag=sync-${DRONE_BRANCH}-${DRONE_COMMIT_SHA:0:8}
+    release: habitat-catalog-cache
+    tiller_ns: habitat
+    secrets:
+      - source: kubernetes_api_staging-1a
+        target: api_server
+      - source: kubernetes_token_staging-1a
+        target: kubernetes_token
+    when:
+      branch:
+        - staging
+      event:
+        - push
+
+  helm-deploy-staging-1b:
+    group: deploy
+    image: quay.io/honestbee/drone-helm
+    skip_tls_verify: true
+    reuse_values: true
+    helm_repos: hb-charts=http://helm-charts.honestbee.com
+    chart: hb-charts/habitat-catalog-cache
+    values: env=staging,image.catalog.tag=catalog-${DRONE_BRANCH}-${DRONE_COMMIT_SHA:0:8},image.sync.tag=sync-${DRONE_BRANCH}-${DRONE_COMMIT_SHA:0:8},az=apse1b
+    release: habitat-catalog-cache
+    tiller_ns: habitat
+    secrets:
+      - source: kubernetes_api_staging-1b
+        target: api_server
+      - source: kubernetes_token_staging-1b
+        target: kubernetes_token
+    when:
+      branch:
+        - staging
+      event:
+        - push
+        
+  migrate-production:
+    group: build
+    image: wys1203/docker-goose
+    secrets:
+      - source: ${DRONE_BRANCH}_db_user
+        target: db_user
+      - source: ${DRONE_BRANCH}_db_password
+        target: db_password
+      - source: ${DRONE_BRANCH}_db_host
+        target: catalog_cache_database_uri
+      - source: ${DRONE_BRANCH}_db_name
+        target: catalog_cache_database_name
+    commands:
+      - goose -env=ci up
+    when:
+      branch: [ master ]
+
+  helm-deploy-production-1a:
+    group: deploy
+    image: quay.io/honestbee/drone-helm
+    skip_tls_verify: true
+    reuse_values: true
+    helm_repos: hb-charts=http://helm-charts.honestbee.com
+    chart: hb-charts/habitat-catalog-cache
+    values: env=production,image.catalog.tag=catalog-${DRONE_BRANCH}-${DRONE_COMMIT_SHA:0:8},image.sync.tag=sync-${DRONE_BRANCH}-${DRONE_COMMIT_SHA:0:8}
+    release: habitat-catalog-cache
+    tiller_ns: habitat
+    secrets:
+      - source: kubernetes_api_production-1a
+        target: api_server
+      - source: kubernetes_token_production-1a
+        target: kubernetes_token
+    when:
+      branch:
+        - master
+      event:
+        - push
+
+  helm-deploy-production-1b:
+    group: deploy
+    image: quay.io/honestbee/drone-helm
+    skip_tls_verify: true
+    reuse_values: true
+    helm_repos: hb-charts=http://helm-charts.honestbee.com
+    chart: hb-charts/habitat-catalog-cache
+    values: env=production,image.catalog.tag=catalog-${DRONE_BRANCH}-${DRONE_COMMIT_SHA:0:8},image.sync.tag=sync-${DRONE_BRANCH}-${DRONE_COMMIT_SHA:0:8},az=apse1b
+    release: habitat-catalog-cache
+    tiller_ns: habitat
+    secrets:
+      - source: kubernetes_api_production-1b
+        target: api_server
+      - source: kubernetes_token_production-1b
+        target: kubernetes_token
+    when:
+      branch:
+        - master
+      event:
+        - push
+
+  notify:
+    image: plugins/slack
+    webhook: ${SLACK_WEBHOOK}
+    channel: feed-devops
+    secrets:
+      - source: slack_webhook
+        target: slack_webhook
+    when:
+      status: [ success, failure ]
+
+  release-notify:
+    image: plugins/slack
+    webhook: ${SLACK_WEBHOOK}
+    channel: team-habitat-releases
+    template: >
+      {{#success build.status}}
+        repo = `{{repo.name}}`. Deployment succeeded. Good job.
+        app-version = `{{build.tag}}`
+        branch = `{{build.branch}}`
+        git-commit-hash = `{{build.commit}}`
+      {{else}}
+        drone-build-number = {{build.number}} failed. Fix me please.
+        https://drone.honestbee.com/honestbee/{{repo.name}}/{{build.number}}
+        
+        app-version = `{{build.tag}}`
+        branch = `{{build.branch}}`
+        git-commit-hash = `{{build.commit}}`
+      {{/success}}
+    secrets:
+      - source: slack_webhook
+        target: slack_webhook
+    when:
+      branch:
+        - master
+        - staging
+      status: [ success, failure ]
+      event:
+        exclude: [ pull_request ]

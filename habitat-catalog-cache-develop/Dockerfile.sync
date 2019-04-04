@@ -1,0 +1,41 @@
+FROM golang:1.10-alpine
+
+WORKDIR /go/bin
+
+COPY bin/sync /go/bin
+
+ARG DB_NAME
+ENV DB_NAME_ENV=$DB_NAME
+
+ARG DB_PWD
+ENV DB_PWD_ENV=$DB_PWD
+
+ARG DB_HOST
+ENV DB_HOST_ENV=$DB_HOST
+
+ARG DB_PORT=5432
+ENV DB_PORT_ENV=$DB_PORT
+
+ARG DB_USER
+ENV DB_USER_ENV=$DB_USER
+
+ARG CACHE_HOST
+ENV CACHE_HOST_ENV=$CACHE_HOST
+
+ARG CACHE_PORT=6379
+ENV CACHE_PORT_ENV=$CACHE_PORT
+
+ARG SEEKER_BASE_URL
+ENV SEEKER_BASE_URL_ENV=$SEEKER_BASE_URL
+
+EXPOSE 9090
+
+CMD /go/bin/sync \
+    -db_name=${DB_NAME_ENV} \
+    -db_pwd=${DB_PWD_ENV} \
+    -db_host=${DB_HOST_ENV} \
+    -db_port=${DB_PORT_ENV} \
+    -db_user=${DB_USER_ENV} \
+    -cache_host=${CACHE_HOST_ENV} \
+    -cache_port=${CACHE_PORT_ENV} \
+    -seeker_base_url=${SEEKER_BASE_URL_ENV}
