@@ -1,9 +1,0 @@
-development:
-    driver: postgres
-    open: user=${DB_USER} password=${DB_PASSWORD} dbname=catalog_cache sslmode=disable
-test:
-    driver: postgres
-    open: user=${DB_USER} password=${DB_PASSWORD} dbname=catalog_cache_test sslmode=disable
-ci:
-    driver: postgres
-    open: postgres://${DB_USER}:${DB_PASSWORD}@${CATALOG_CACHE_DATABASE_URI}:5432/${CATALOG_CACHE_DATABASE_NAME}?sslmode=disable
