@@ -2,6 +2,7 @@ package cms
 
 import (
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -35,6 +36,48 @@ func HandleNew(w http.ResponseWriter, req *http.Request) {
 	default:
 		http.Error(w, "Method not supported: "+req.Method, http.StatusMethodNotAllowed)
 	}
+}
+
+// ServePage serves a page based on the route matched. This will match any URL
+// beginning with /page
+func ServePage(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimLeft(r.URL.Path, "/page/")
+
+	if path == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	p := &Page{
+		Title:   strings.ToTitle(path),
+		Content: "Here is my page",
+	}
+
+	Tmpl.ExecuteTemplate(w, "page", p)
+}
+
+// ServePost serves a post
+func ServePost(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimLeft(r.URL.Path, "/post/")
+
+	if path == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	p := &Post{
+		Title:   strings.ToTitle(path),
+		Content: "Here is my page",
+		Comments: []*Comment{
+			&Comment{
+				Author:        "Roy Wei",
+				Comment:       "Looks great!",
+				DatePublished: time.Now(),
+			},
+		},
+	}
+
+	Tmpl.ExecuteTemplate(w, "post", p)
 }
 
 func ServeIndex(w http.ResponseWriter, req *http.Request) {
