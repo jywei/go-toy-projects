@@ -1,17 +1,13 @@
 package main
 
 import (
-	"os"
+	"net/http"
 
 	"github.com/jywei/toy-projects/cms"
 )
 
 func main() {
-	// p is a reference of cms.Page
-	p := &cms.Page{
-		Title:   "Hello, world!",
-		Content: "This is the body of our webpage",
-	}
-
-	cms.Tmpl.ExecuteTemplate(os.Stdout, "index", p)
+	http.HandleFunc("/", cms.ServeIndex)
+	http.HandleFunc("/new", cms.HandleNew)
+	http.ListenAndServe(":3000", nil)
 }
