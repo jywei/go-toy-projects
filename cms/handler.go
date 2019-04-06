@@ -19,10 +19,17 @@ func HandleNew(w http.ResponseWriter, req *http.Request) {
 		req.ParseForm()
 
 		if contentType == "page" {
-			Tmpl.ExecuteTemplate(w, "page", &Page{
+			p := &Page{
 				Title:   title,
 				Content: content,
-			})
+			}
+			_, err := CreatePage(p)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				// return, otherwise the func will continue to execute
+				return
+			}
+			Tmpl.ExecuteTemplate(w, "page", p)
 			return
 		}
 
