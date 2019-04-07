@@ -1,5 +1,10 @@
 package middleware
 
+import (
+	"fmt"
+	"net/http"
+)
+
 // Add is a variadic function that adds up numbers
 func Add(nums ...int) int {
 	sum := 0
@@ -23,4 +28,13 @@ func (c *Chain) AddNext(num int) *Chain {
 // Finally is to return the final sum of the chain
 func (c *Chain) Finally(num int) int {
 	return c.Sum + num
+}
+
+// Next runs the next function in the chainable
+func Next(next http.HandlerFunc) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("Before")
+		next.ServeHTTP(w, r)
+		fmt.Println("After")
+	})
 }
