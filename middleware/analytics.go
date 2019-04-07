@@ -8,3 +8,14 @@ func Add(nums ...int) int {
 	}
 	return sum
 }
+
+// Chain holds the sum
+type Chain struct {
+	Sum int
+}
+
+// AddNext is chainable sum function
+func (c *Chain) AddNext(num int) *Chain {
+	c.Sum += num
+	return c
+}
