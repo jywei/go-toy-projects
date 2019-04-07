@@ -11,6 +11,17 @@ func hello(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Hello"))
 }
 
+// func tricky() string {
+// 	defer log.Println("String 2")
+// 	return "String 1" // Will print 2 1
+// }
+//
+// func lastInFirstOut() {
+// 	for i := 0; i < 4; i++ {
+// 		defer log.Println(i)
+// 	} // Will print 3 2 1 0
+// }
+
 func main() {
 	// sum := middleware.Add(1, 2, 3)
 	// fmt.Println(sum)
