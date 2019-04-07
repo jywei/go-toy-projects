@@ -19,3 +19,8 @@ func (c *Chain) AddNext(num int) *Chain {
 	c.Sum += num
 	return c
 }
+
+// Finally is to return the final sum of the chain
+func (c *Chain) Finally(num int) int {
+	return c.Sum + num
+}
