@@ -24,6 +24,12 @@ func newDB() *PgStore {
 	}
 }
 
+func GetPage(id string) (*Page, error) {
+	var p Page
+	err := store.DB.QueryRow("SELECT * FROM pages WHERE id = $1", id).Scan(&p.ID, &p.Title, &p.Content)
+	return &p, err
+}
+
 // GetPages is the new function that allows us to get every page from our db
 func GetPages() ([]*Page, error) {
 	rows, err := store.DB.Query("SELECT * FROM pages")

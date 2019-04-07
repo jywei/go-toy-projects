@@ -60,12 +60,13 @@ func ServePage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p := &Page{
-		Title:   strings.ToTitle(path),
-		Content: "Here is my page",
+	page, err := GetPage(path)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
 	}
 
-	Tmpl.ExecuteTemplate(w, "page", p)
+	Tmpl.ExecuteTemplate(w, "page", page)
 }
 
 // ServePost serves a post
