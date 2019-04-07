@@ -51,7 +51,12 @@ func ServePage(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimLeft(r.URL.Path, "/page/")
 
 	if path == "" {
-		http.NotFound(w, r)
+		pages, err := GetPages()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		Tmpl.ExecuteTemplate(w, "pages", pages)
 		return
 	}
 
