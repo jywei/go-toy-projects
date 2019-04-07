@@ -22,6 +22,10 @@ func hello(w http.ResponseWriter, r *http.Request) {
 // 	} // Will print 3 2 1 0
 // }
 
+func panicker(w http.ResponseWriter, r *http.Request) {
+	panic("Wahhhh")
+}
+
 func main() {
 	// sum := middleware.Add(1, 2, 3)
 	// fmt.Println(sum)
@@ -33,5 +37,6 @@ func main() {
 	// http.Handle("/", middleware.Next(hello))
 	logger := middleware.CreateLogger("section4")
 	http.Handle("/", middleware.Time(logger, hello))
+	http.Handle("/panic", middleware.Recover(panicker))
 	http.ListenAndServe(":3000", nil)
 }
