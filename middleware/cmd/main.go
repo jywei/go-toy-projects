@@ -23,7 +23,7 @@ func hello(w http.ResponseWriter, r *http.Request) {
 // }
 
 func panicker(w http.ResponseWriter, r *http.Request) {
-	panic("Wahhhh")
+	panic(middleware.ErrInvalidEmail)
 }
 
 func main() {
