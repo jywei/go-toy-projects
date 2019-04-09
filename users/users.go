@@ -2,8 +2,9 @@ package users
 
 import (
 	"errors"
-	"sync"
+	"time"
 
+	"github.com/boltdb/bolt"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -14,77 +15,114 @@ var (
 	// ErrUserAlreadyExists is the error thrown when a user attempts to create
 	// a new user in the DB with a duplicate username.
 	ErrUserAlreadyExists = errors.New("users: username already exists")
+
+	// ErrUserNotFound is the error thrown when a user can't be found in the
+	// database.
+	ErrUserNotFound = errors.New("users: user not found")
 )
 
-// Store is a simple in memory database, and it's protected by a read-write mutex, so no race condition
-// for two different goroutines (since map is not safe for concurrency)
+// Store is a reference to our BoltDB instance that contains two seperate
+// internal stores: a user store, and a session store.
 type Store struct {
-	rwm *sync.RWMutex
-	m   map[string]string
+	DB       *bolt.DB
+	Users    string
+	Sessions string
 }
 
-// newDB is for initializing in memory DB when the program starts
+// newDB is a convenience method to initalize our DB.
 func newDB() *Store {
+	// Create or open the database
+	db, err := bolt.Open("users.db", 0600, &bolt.Options{
+		Timeout: 1 * time.Second,
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	// Create the Users bucket
+	db.Update(func(tx *bolt.Tx) error {
+		_, err := tx.CreateBucketIfNotExists([]byte("Users"))
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+
+	// Create the Sessions bucket
+	db.Update(func(tx *bolt.Tx) error {
+		_, err := tx.CreateBucketIfNotExists([]byte("Sessions"))
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+
 	return &Store{
-		rwm: &sync.RWMutex{},
-		m:   make(map[string]string),
+		DB:       db,
+		Users:    "Users",
+		Sessions: "Sessions",
 	}
 }
 
-// NewUser accepts a username and password and creates a new user in the DB
+// NewUser accepts a username and password and creates a new user in our DB
+// from it.
 func NewUser(username string, password string) error {
 	err := exists(username)
 	if err != nil {
 		return err
 	}
 
-	DB.rwm.Lock()
-	defer DB.rwm.Unlock()
-
-	// will generate salted password, and it takes a byte slice, not a string
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
 
-	// write into the map
-	DB.m[username] = string(hashedPassword)
-	return nil
+	return DB.DB.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(DB.Users))
+		return b.Put([]byte(username), hashedPassword)
+	})
 }
 
-// AuthenticateUser accepts a username and password, and checks that the given password matches the hashed password
+// AuthenticateUser accepts a username and password, and checks that the given
+// password matches the hashed password. It returns nil on success, and an
+// error on failure.
 func AuthenticateUser(username string, password string) error {
-	DB.rwm.RLock()
-	defer DB.rwm.RUnlock()
-
-	hashedPassword := DB.m[username]
-	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
-
-	return err
+	var hashedPassword []byte
+	DB.DB.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(DB.Users))
+		hashedPassword = b.Get([]byte(username))
+		return nil
+	})
+	if hashedPassword == nil {
+		return ErrUserNotFound
+	}
+	return bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 }
 
-// OverrideOldPassword overrides the old password
+// OverrideOldPassword overrides the old password with the new password. For
+// use when resetting passwords.
 func OverrideOldPassword(username string, password string) error {
-	// Just like in NewUser
-	DB.rwm.Lock()
-	defer DB.rwm.Unlock()
-
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
 
-	DB.m[username] = string(hashedPassword)
-	return nil
+	return DB.DB.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(DB.Users))
+		return b.Put([]byte(username), hashedPassword)
+	})
 }
 
-// exist is an internal utility function for ensuring the usernames are unique
+// exists is an internal utility function for ensuring the usernames are
+// unique.
 func exists(username string) error {
-	// RLock locks rw for reading
-	DB.rwm.RLock()
-	defer DB.rwm.RUnlock()
-
-	if DB.m[username] != "" {
+	var result []byte
+	DB.DB.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(DB.Users))
+		result = b.Get([]byte(username))
+		return nil
+	})
+	if result != nil {
 		return ErrUserAlreadyExists
 	}
 	return nil
