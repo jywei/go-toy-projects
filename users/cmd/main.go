@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 
 	"github.com/jywei/toy-projects/users"
@@ -32,19 +33,37 @@ func restrictedHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(user))
 }
 
+func oauthRestrictedHandler(w http.ResponseWriter, r *http.Request) {
+	user, err := users.VerifyToken(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+	w.Write([]byte(user))
+}
+
+func sanitizeInputExample(str string) {
+	fmt.Println("JS: ", template.JSEscapeString(str))
+	fmt.Println("HTML: ", template.HTMLEscapeString(str))
+}
+
 func main() {
+	sanitizeInputExample("<script>alert(\"Hi!\");</sciprt>")
+
 	username, password := "roywjy@gmail.com", "qwerty123"
 
 	err := users.NewUser(username, password)
 	if err != nil {
-		fmt.Printf("Couldn't create user: %s\n", err.Error())
-		return
+		fmt.Printf("User already exists: %s\n", err.Error())
+	} else {
+		fmt.Printf("Succesfully created and authenticated user \033[32m%s\033[0m\n", username)
 	}
 
-	fmt.Printf("Succesfully created and authenticated user \033[32m%s\033[0m\n", username)
-
 	http.HandleFunc("/", authHandler)
+	http.HandleFunc("/auth/gplus/authorize", users.AuthURLHandler)
+	http.HandleFunc("/auth/gplus/callback", users.CallbackURLHandler)
+	http.HandleFunc("/oauth", oauthRestrictedHandler)
 	http.HandleFunc("/restricted", restrictedHandler)
 
-	http.ListenAndServe(":3000", nil)
+	log.Fatal(http.ListenAndServeTLS(":3000", "server.pem", "server.key", nil))
 }

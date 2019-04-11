@@ -5,9 +5,13 @@ import (
 	"time"
 
 	"github.com/boltdb/bolt"
+	"github.com/gorilla/csrf"
 )
 
 const cookieName = "_goproj_sess"
+
+// CSRF is used to prevent CSRF attacks
+var CSRF = csrf.Protect(genRandBytes())
 
 // GetSession gets the current session from the cookie
 func GetSession(w http.ResponseWriter, r *http.Request) string {
