@@ -2,12 +2,15 @@ package cms
 
 import (
 	"html/template"
+	"os"
 	"time"
 )
 
+var tmplPath = os.Getenv("GOPATH") + "/src/github.com/jywei/toy-projects/cms/templates"
+
 // Tmpl is a reference to all of our templates
 // ParseGlob would return a template and error, and Must will do the eror checking
-var Tmpl = template.Must(template.ParseGlob("templates/*"))
+var Tmpl = template.Must(template.ParseGlob(tmplPath))
 
 // Page is the struct used for each webpage
 type Page struct {
