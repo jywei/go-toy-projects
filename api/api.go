@@ -51,7 +51,7 @@ func CreatePage(w http.ResponseWriter, r *http.Request) {
 
 func writeJSON(w http.ResponseWriter, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
-	resJSON, err := json.MarshalIndent(data, "", "")
+	resJSON, err := json.MarshalIndent(data, "", "\t")
 	if err != nil {
 		errJSON(w, err.Error(), http.StatusInternalServerError)
 	}
