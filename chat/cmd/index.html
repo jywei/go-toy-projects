@@ -25,15 +25,16 @@
   $(function() {
 
     var ws = new window.WebSocket("ws://localhost:3000/ws");
-        $msg = $("#msg");
-        $box = $("#box");
+    var $msg = $("#msg");
+    var $box = $("#box");
 
     ws.onclose = function(e) {
       $box.append("<p class='bold'>Connection closed!</p>");
-    }
+    };
     ws.onmessage = function(e) {
       $box.append("<p>"+e.data+"</p>");
-    }
+      increaseUnreadCount();
+    };
 
     $("#form").submit(function(e) {
       e.preventDefault();
@@ -47,7 +48,26 @@
       $msg.val("");
     });
 
-    });
+    document.addEventListener("visibilitychange", resetUnreadCount);
+
+    function increaseUnreadCount() {
+      if (document.hidden === true) {
+        var count = parseInt(document.title.match(/\d+/));
+        if (!count) {
+          document.title = "(1) Chat";
+          return;
+        }
+        document.title = "("+(count+1)+") Chat";
+      }
+    }
+
+    function resetUnreadCount() {
+      if (document.hidden === false) {
+        document.title = "Chat";
+      }
+    }
+
+  });
   </script>
   </body>
 </html>
