@@ -5,9 +5,10 @@ import (
 	"net/http"
 	"strings"
 
-	pool "github.com/jywei/toy-projects/bufferpool"
 	"github.com/jywei/toy-projects/cms"
 )
+
+var pool = New()
 
 // Doc lists all the routes for our API
 func Doc(w http.ResponseWriter, r *http.Request) {
@@ -53,7 +54,7 @@ func writeJSON(w http.ResponseWriter, data interface{}) {
 	buf := pool.Get()
 	defer pool.Put(buf)
 	// Encode the data we passed in ,and it will stream the data
-	err := json.NewEncoder(&b).Encode(data)
+	err := json.NewEncoder(buf).Encode(data)
 	if err != nil {
 		errJSON(w, err.Error(), http.StatusInternalServerError)
 		return
