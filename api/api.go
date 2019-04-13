@@ -1,11 +1,11 @@
 package api
 
 import (
-	"bytes"
 	"encoding/json"
 	"net/http"
 	"strings"
 
+	pool "github.com/jywei/toy-projects/bufferpool"
 	"github.com/jywei/toy-projects/cms"
 )
 
@@ -50,7 +50,8 @@ func CreatePage(w http.ResponseWriter, r *http.Request) {
 
 func writeJSON(w http.ResponseWriter, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
-	var b bytes.Buffer
+	buf := pool.Get()
+	defer pool.Put(buf)
 	// Encode the data we passed in ,and it will stream the data
 	err := json.NewEncoder(&b).Encode(data)
 	if err != nil {
@@ -58,7 +59,7 @@ func writeJSON(w http.ResponseWriter, data interface{}) {
 		return
 	}
 	// write the buffer content to our response
-	b.WriteTo(w)
+	buf.WriteTo(w)
 }
 
 func errJSON(w http.ResponseWriter, err string, status int) {
