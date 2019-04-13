@@ -45,7 +45,7 @@ func UploadImage(w http.ResponseWriter, r *http.Request) {
 func ShowImage(w http.ResponseWriter, r *http.Request) {
 	// 1. Get the file name from the url
 	name := strings.TrimLeft(r.URL.Path, "/image/")
-	// 2. Open the file
+	// 2. Open the file, this contains sercurity risks
 	file, err := os.Open(here + name)
 	if err != nil {
 		errJSON(w, err.Error(), http.StatusInternalServerError)
