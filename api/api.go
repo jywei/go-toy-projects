@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -49,12 +50,15 @@ func CreatePage(w http.ResponseWriter, r *http.Request) {
 
 func writeJSON(w http.ResponseWriter, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
+	var b bytes.Buffer
 	// Encode the data we passed in ,and it will stream the data
-	err := json.NewEncoder(w).Encode(data)
+	err := json.NewEncoder(&b).Encode(data)
 	if err != nil {
 		errJSON(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	// write the buffer content to our response
+	b.WriteTo(w)
 }
 
 func errJSON(w http.ResponseWriter, err string, status int) {
