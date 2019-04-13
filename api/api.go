@@ -2,7 +2,6 @@ package api
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"net/http"
 	"strings"
 
@@ -32,13 +31,12 @@ func AllPages(w http.ResponseWriter, r *http.Request) {
 // CreatePage creates a new post or pages
 func CreatePage(w http.ResponseWriter, r *http.Request) {
 	page := new(cms.Page)
-	data, err := ioutil.ReadAll(r.Body)
+	// take the body then decode it into our page varialbe
+	err := json.NewDecoder(r.Body).Decode(page)
 	if err != nil {
 		errJSON(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	json.Unmarshal(data, page)
 	id, err := cms.CreatePage(page)
 	if err != nil {
 		errJSON(w, err.Error(), http.StatusInternalServerError)
@@ -51,11 +49,12 @@ func CreatePage(w http.ResponseWriter, r *http.Request) {
 
 func writeJSON(w http.ResponseWriter, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
-	resJSON, err := json.MarshalIndent(data, "", "\t")
+	// Encode the data we passed in ,and it will stream the data
+	err := json.NewEncoder(w).Encode(data)
 	if err != nil {
 		errJSON(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
-	w.Write(resJSON)
 }
 
 func errJSON(w http.ResponseWriter, err string, status int) {
