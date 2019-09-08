@@ -32,8 +32,8 @@ func main() {
 		},
 	}
 
-	jimPointer := &jim
-	jimPointer.updateName("Jimmy")
+	// jimPointer := &jim
+	jim.updateName("Jimmy")
 	jim.print()
 }
 
@@ -41,6 +41,7 @@ func (p person) print() {
 	fmt.Printf("%+v", p)
 }
 
+// go with allow us to call with or without pointer for the receiver
 func (p *person) updateName(newFirstname string) {
 	(*p).firstName = newFirstname
 }
