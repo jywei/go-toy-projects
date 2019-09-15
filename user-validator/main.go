@@ -6,12 +6,12 @@ import (
 )
 
 const (
-	user     = "jack"
-	pwd      = "1988"
-	usgae    = "Usage: [username] [password]"
-	errUser  = "Access denied for %q.\n"
-	errPwd   = "Invalid passowrd for %q.\n"
-	accessOK = "Access granted to %q.\n"
+	user, user2 = "jack", "roy"
+	pwd, pwd2   = "1988", "1989"
+	usgae       = "Usage: [username] [password]"
+	errUser     = "Access denied for %q.\n"
+	errPwd      = "Invalid passowrd for %q.\n"
+	accessOK    = "Access granted to %q.\n"
 )
 
 func main() {
@@ -22,9 +22,9 @@ func main() {
 	}
 
 	u, p := args[1], args[2]
-	if u != user {
+	if u != user && u != user2 {
 		fmt.Printf(errUser, u)
-	} else if p != pwd {
+	} else if p != pwd && p != pwd2 {
 		fmt.Printf(errPwd, u)
 	} else {
 		fmt.Printf(accessOK, u)
