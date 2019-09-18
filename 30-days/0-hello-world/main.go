@@ -7,8 +7,8 @@ import (
 )
 
 func main() {
-	inputreader := bufio.NewReader(os.Stdin)
-	input, _ := inputreader.ReadString('\n')
+	scanner := bufio.NewReader(os.Stdin)
+	input, _ := scanner.ReadString('\n')
 	fmt.Println("Hello, World.")
 	fmt.Println(input)
 }
