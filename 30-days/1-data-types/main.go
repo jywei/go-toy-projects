@@ -9,8 +9,8 @@ import (
 
 func main() {
 	var i uint64 = 4
-	var d float64 = 4.0
-	var s string = "HackerRank "
+	d := 4.0
+	s := "HackerRank "
 
 	scanner := bufio.NewScanner(os.Stdin)
 
